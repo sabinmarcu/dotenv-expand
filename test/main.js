@@ -7,10 +7,21 @@ var lab = exports.lab = Lab.script()
 var it = lab.test
 var describe = lab.experiment
 var beforeEach = lab.beforeEach
+var before = lab.before
 
 var dotenvExpand = require('../lib/main')
 
+var originalEnv = null;
+
 describe('dotenv-expand', function () {
+  before((done) => {
+    originalEnv = Object.assign({}, process.env);
+    done()
+  })
+  beforeEach((done) => {
+    process.env = Object.assign({}, originalEnv);
+    done()
+  })
   describe('unit tests', function () {
     it('returns object', function (done) {
       var dotenv = { parsed: {} }
@@ -47,6 +58,7 @@ describe('dotenv-expand', function () {
 
       obj['MACHINE_EXPAND'].should.eql('machine')
       obj['MACHINE_EXPAND_SIMPLE'].should.eql('machine')
+      delete process.env.MACHINE
       done()
     })
 
@@ -73,6 +85,22 @@ describe('dotenv-expand', function () {
       var obj = dotenvExpand(dotenv).parsed
 
       obj['MACHINE_EXPAND'].should.eql('machine')
+      delete process.env.MACHINE
+      done()
+    })
+
+    it('deprioritizes machine key expansion over .env on false env fist', function (done) {
+      process.env.MACHINE = 'machine'
+      var dotenv = {
+        parsed: {
+          'MACHINE': 'machine_env',
+          'MACHINE_EXPAND': '$MACHINE'
+        }
+      }
+      var obj = dotenvExpand(dotenv, { envFirst: false }).parsed
+
+      obj['MACHINE_EXPAND'].should.eql('machine_env')
+      delete process.env.MACHINE
       done()
     })
 
@@ -110,6 +138,7 @@ describe('dotenv-expand', function () {
       var obj = dotenvExpand(dotenv).parsed
 
       obj['SOME_ENV'].should.eql('production')
+      delete process.env.SOME_ENV
       done()
     })
   })
@@ -134,6 +163,7 @@ describe('dotenv-expand', function () {
       dotenvExpand(dotenv)
 
       process.env['MACHINE_EXPAND'].should.eql('machine')
+      delete process.env.MACHINE;
       done()
     })
 
@@ -149,6 +179,16 @@ describe('dotenv-expand', function () {
       var obj = dotenvExpand(dotenv).parsed
 
       obj['MACHINE_EXPAND'].should.eql('machine')
+      delete process.env.MACHINE
+      done()
+    })
+
+    it('deprioritizes machine key expansion over .env with false env first', function (done) {
+      process.env.MACHINE = 'machine'
+      var obj = dotenvExpand(dotenv, { envFirst: false }).parsed
+
+      obj['MACHINE_EXPAND'].should.eql('machine_env')
+      delete process.env.MACHINE
       done()
     })
 
@@ -177,6 +217,27 @@ describe('dotenv-expand', function () {
       var obj = dotenvExpand(dotenv).parsed
 
       obj['WITHOUT_CURLY_BRACES_URI_RECURSIVELY'].should.eql('mongodb://username:password@abcd1234.mongolab.com:12345/heroku_db')
+      done()
+    })
+
+    it('should expand default', function (done) {
+      var obj = dotenvExpand(dotenv).parsed
+
+      obj['DEFAULT_VALUE'].should.eql('mongodb://defaultValue')
+      done()
+    })
+
+    it('should expand defaults recursively', function (done) {
+      var obj = dotenvExpand(dotenv).parsed
+
+      obj['DEFAULT_VALUE_INTERPOLATE'].should.eql('mongodb://username')
+      done()
+    })
+
+    it('should expand defaults recursively double', function (done) {
+      var obj = dotenvExpand(dotenv).parsed
+
+      obj['DEFAULT_VALUE_INTERPOLATE_DOUBLE'].should.eql('mongodb://username')
       done()
     })
   })
